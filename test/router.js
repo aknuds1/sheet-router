@@ -192,3 +192,22 @@ test('hash routes', (t) => {
     router('/foo#bar')
   })
 })
+
+test('route hooks', (t) => {
+  t.test('should allow loading of data prior to route rendering', (t) => {
+    t.plan(2)
+
+    const router = sheetRouter([
+      ['/', {
+        render: () => {
+          t.ok('foo called')
+        },
+        loadData: () => {
+          t.ok('loadData called before rendering')
+        }
+      }]
+    ])
+
+    router('/')
+  })
+})

@@ -2,6 +2,7 @@ const window = require('global/window')
 const pathname = require('./_pathname')
 const wayfarer = require('wayfarer')
 const assert = require('assert')
+const Promise = require('bluebird')
 
 const isElectron = (window.process && window.process.type)
 
@@ -41,10 +42,24 @@ function sheetRouter (opts, tree) {
       var rootArr = tree[0]
     }
 
-    const cb = (typeof tree[1] === 'function') ? tree[1] : null
-    const children = (Array.isArray(tree[1]))
-      ? tree[1]
-      : Array.isArray(tree[2]) ? tree[2] : null
+    let cb
+    let children
+    let loadData
+    const secondEntry = tree[1]
+    const secondEntryType = typeof secondEntry
+    if (secondEntryType === 'function') {
+      cb = secondEntry
+    } else if (Array.isArray(secondEntry)) {
+      children = secondEntry
+    } else if (secondEntryType === 'object') {
+      cb = secondEntry.render
+      loadData = secondEntry.loadData
+      assert.notEqual(cb, null)
+    }
+
+    if (children == null && Array.isArray(tree[2])) {
+      children = tree[2]
+    }
 
     if (rootArr) {
       tree.forEach(function (node) {
@@ -57,11 +72,29 @@ function sheetRouter (opts, tree) {
         ? fullRoute.concat(route).join('/')
         : fullRoute.length ? fullRoute.join('/') : route
 
+      if (loadData != null) {
+        // Load data for the route
+        // If it returns a promise, return a loader
+        // When promise resolves, trigger a re-render with fetched data
+        // Else, return the value
+        cb = (...args) => {
+          console.log(`Loading data`)
+          Promise.method(loadData)()
+            .then(() => {
+              console.log(`Data loaded, calling cb`)
+              cb(...args)
+            })
+          }
+        }
+      }
+
       // if opts.thunk is false or only enabled for match, don't thunk
       const handler = (opts.thunk === false || opts.thunk === 'match')
         ? cb
         : thunkify(cb)
-      router.on(innerRoute, handler)
+      router.on(innerRoute, function wrapHandler (...args) {
+
+      })
     }
 
     if (Array.isArray(children)) {
@@ -80,6 +113,7 @@ function sheetRouter (opts, tree) {
   //
   // (str, [any..]) -> any
   function match (route, arg1, arg2, arg3, arg4, arg5) {
+    console.log(`Match called`, route)
     assert.equal(typeof route, 'string', 'sheet-router: route must be a string')
 
     if (opts.thunk === false) {
@@ -88,8 +122,11 @@ function sheetRouter (opts, tree) {
       return prevCallback(arg1, arg2, arg3, arg4, arg5)
     } else {
       prevRoute = pathname(route, isElectron)
+      console.log(`prevRoute: ${prevRoute}`)
       prevCallback = router(prevRoute)
-      return prevCallback(arg1, arg2, arg3, arg4, arg5)
+      const ret = prevCallback(arg1, arg2, arg3, arg4, arg5)
+      console.log(`Thunked returned`, ret)
+      return ret
     }
   }
 }
@@ -98,7 +135,7 @@ function sheetRouter (opts, tree) {
 // fn -> obj -> (any, any, any, any, any)
 function thunkify (cb) {
   return function (params) {
-    return function (arg1, arg2, arg3, arg4, arg5) {
+    return function thunked (arg1, arg2, arg3, arg4, arg5) {
       return cb(params, arg1, arg2, arg3, arg4, arg5)
     }
   }
