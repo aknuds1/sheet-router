@@ -1,5 +1,5 @@
 var pathname = require('./_pathname')
-var wayfarer = require('wayfarer')
+var wayfarer = require('@arve.knudsen/wayfarer')
 var assert = require('assert')
 
 var isLocalFile = (/file:\/\//.test(typeof window === 'object' &&

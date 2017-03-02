@@ -1,4 +1,4 @@
-const walk = require('wayfarer/walk')
+const walk = require('@arve.knudsen/wayfarer/walk')
 const assert = require('assert')
 
 module.exports = walkSheetRouter
