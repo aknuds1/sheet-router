@@ -1,6 +1,6 @@
 {
   "name": "@arve.knudsen/sheet-router",
-  "version": "4.2.4",
+  "version": "4.2.5",
   "description": "Fast, modular client router",
   "main": "index.js",
   "scripts": {
